@@ -17,7 +17,8 @@ public class EchoServer extends Thread {
         out = new PrintWriter(clientSocket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
         byte[] thing = clientSocket.getInetAddress().getAddress();
-        System.out.println("Receiving connection from: " + Integer.toOctalString(thing[0]) +"." +Integer.toOctalString(thing[1]) +"."+Integer.toOctalString(thing[2]) +"."+Integer.toOctalString(thing[3]) +"!");
+        System.out.println("Receiving connection from: " + Integer.toString(thing[0]) +"." +Integer.toString(thing[1])
+                +"."+Integer.toString(thing[2]) +"."+Integer.toString(thing[3]) +"!");
         this.start();
     }
 
@@ -150,8 +151,6 @@ public class EchoServer extends Thread {
 
             }
         }
-
-
         return true;
     }
 
