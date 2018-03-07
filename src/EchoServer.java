@@ -1,3 +1,5 @@
+import org.sqlite.SQLiteException;
+
 import java.net.*;
 import java.io.*;
 import java.sql.*;
@@ -229,8 +231,12 @@ public class EchoServer extends Thread {
             Class.forName("org.sqlite.JDBC");
             c = DriverManager.getConnection("jdbc:sqlite:database.db");
             Statement stmn = c.createStatement();
-            String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ipAdd + "', '" + macAdd + "');";
-            stmn.execute(sql);
+            try {
+                String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ipAdd + "', '" + macAdd + "');";
+                stmn.execute(sql);
+            } catch (SQLiteException o) {
+                return;
+            }
             stmn.close();
         } catch (Exception e) {
             e.printStackTrace();
