@@ -3,8 +3,6 @@ import java.io.*;
 import java.sql.*;
 import java.util.Base64;
 
-import org.sqlite.JDBC;
-
 public class EchoServer extends Thread {
     private static String loggedUser = "";
     Socket clientSocket;
@@ -16,27 +14,22 @@ public class EchoServer extends Thread {
         clientSocket = openSocket;
         out = new PrintWriter(clientSocket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-        byte[] thing = clientSocket.getInetAddress().getAddress();
-        System.out.println("Receiving connection from: " + Integer.toString(thing[0]) +"." +Integer.toString(thing[1])
-                +"."+Integer.toString(thing[2]) +"."+Integer.toString(thing[3]) +"!");
         this.start();
     }
 
     public void run(){
-        /*
-        if (args.length != 1) {
-            System.err.println("Usage: java EchoServer <port number>");
-            System.exit(1);
-        }
-        
-        int portNumber = Integer.parseInt(args[0]);
-        */
         int portNumber = 80;
 
         boolean b = true;
         while (b) {
             try {
+                String ip = clientSocket.getInetAddress().getHostAddress();
+                System.out.println("Receiving connection from: "+ip);
                 String inputLine;
+                String mac = in.readLine();
+                System.out.println("Connected MAC Address: "+mac);
+                trackAddress(ip, mac);
+                
                 while (b) {
                     out.flush();
                     if ((inputLine = in.readLine()) != null) {
@@ -76,7 +69,9 @@ public class EchoServer extends Thread {
                     eTwo.printStackTrace();
                 }
             }
+
         }
+
     }
 
     private static boolean requestLogin(String inputLine) {
@@ -224,5 +219,29 @@ public class EchoServer extends Thread {
             return false;
         }
         return true;
+    }
+
+    private static void trackAddress(String ip, String mac) {
+        String ipAdd = ip;
+        String macAdd = mac;
+        Connection c = null;
+        try {
+            Class.forName("org.sqlite.JDBC");
+            c = DriverManager.getConnection("jdbc:sqlite:database.db");
+            Statement stmn = c.createStatement();
+            String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ipAdd + "', '" + macAdd + "');";
+            stmn.execute(sql);
+            stmn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (c != null) {
+                    c.close();
+                }
+            } catch (Exception e) {
+
+            }
+        }
     }
 }
