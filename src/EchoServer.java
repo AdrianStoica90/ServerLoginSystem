@@ -3,16 +3,18 @@ import org.sqlite.SQLiteException;
 import java.net.*;
 import java.io.*;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Base64;
 
 public class EchoServer extends Thread {
-    private static String loggedUser = "";
-    Socket clientSocket;
-    PrintWriter out;
-    BufferedReader in;
+    private String socketLoggedUser = "";
+    private Socket clientSocket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private static ArrayList<String> loggedInUsers = new ArrayList<>();
 
 
-    public EchoServer(Socket openSocket) throws IOException{
+    EchoServer(Socket openSocket) throws IOException {
         clientSocket = openSocket;
         out = new PrintWriter(clientSocket.getOutputStream(), true);
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -30,7 +32,7 @@ public class EchoServer extends Thread {
                 String mac = in.readLine();
                 System.out.println("Connected MAC Address: "+mac);
                 trackAddress(ip, mac);
-                
+
                 while (b) {
                     out.flush();
                     if ((inputLine = in.readLine()) != null) {
@@ -53,6 +55,8 @@ public class EchoServer extends Thread {
                             if (requestLogin(inputLine)) {
                                 out.println("Success");
                             } else out.println("Failed");
+                        } else if (inputLine.contains("requestLogout")) {
+                            requestLogout();
                         }
                     }
                 }
@@ -63,7 +67,6 @@ public class EchoServer extends Thread {
                     in.close();
                     out.close();
                     clientSocket.close();
-                    this.stop();
                 }catch(IOException eTwo){
                     eTwo.printStackTrace();
                 }
@@ -73,7 +76,7 @@ public class EchoServer extends Thread {
 
     }
 
-    private static boolean requestLogin(String inputLine) {
+    private boolean requestLogin(String inputLine) {
         boolean returnStatement = false;
 
         String username, password, input, pepperedPass;
@@ -81,13 +84,19 @@ public class EchoServer extends Thread {
         input = inputLine.substring(inputLine.indexOf('(') + 1, inputLine.indexOf(')'));
         String[] args = input.split(",");
         username = args[0];
-        if (!(loggedUser.equalsIgnoreCase(username))) {
+        boolean isAlreadyLoggedIn = false;
+        for (String s : loggedInUsers) {
+            if (username.equalsIgnoreCase(s)) {
+                isAlreadyLoggedIn = true;
+            }
+        }
+        if (!(isAlreadyLoggedIn)) {
             password = args[1];
             try {
                 byte[] pepPass = Password.getSaltedHash(password.toCharArray());
                 pepperedPass = Base64.getEncoder().encodeToString(pepPass);
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
             Connection c = null;
             if (!(pepperedPass.equals(""))) {
@@ -100,12 +109,13 @@ public class EchoServer extends Thread {
                     while (rs.next()) {
                         if (rs.getString("username").equalsIgnoreCase(username) && rs.getString("password").equals(pepperedPass)) {
                             returnStatement = true;
-                            loggedUser = username;
+                            socketLoggedUser = username;
+                            loggedInUsers.add(username);
                             break;
                         }
                     }
                 } catch (Exception e) {
-
+                    e.printStackTrace();
                 } finally {
                     try {
                         if (c != null) {
@@ -120,7 +130,7 @@ public class EchoServer extends Thread {
         return returnStatement;
     }
 
-    private static boolean checkRegistration(String userName) {
+    private boolean checkRegistration(String userName) {
         Connection conn = null;
         try {
             Class.forName("org.sqlite.JDBC");
@@ -135,20 +145,20 @@ public class EchoServer extends Thread {
             }
             stmn.close();
         } catch (Exception e) {
-
+            e.printStackTrace();
         } finally {
             try {
                 if (conn != null) {
                     conn.close();
                 }
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
         }
         return true;
     }
 
-    private static String requestSaltFromUserName(String username) {
+    private String requestSaltFromUserName(String username) {
         String salt = "";
         Connection c = null;
         try {
@@ -170,14 +180,14 @@ public class EchoServer extends Thread {
                     c.close();
                 }
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
         }
         return salt;
     }
 
-    private static boolean requestUserAccount(String inputLine) {
-        String input, username, password, salt, pepperedPassAsString;
+    private boolean requestUserAccount(String inputLine) {
+        String input, username, password, salt, pepperedPassAsString, email;
         pepperedPassAsString = "";
         byte[] pepperedPass;
         input = inputLine.substring(inputLine.indexOf('(') + 1, inputLine.indexOf(')'));
@@ -188,21 +198,23 @@ public class EchoServer extends Thread {
             pepperedPass = Password.getSaltedHash(password.toCharArray());
             pepperedPassAsString = Base64.getEncoder().encodeToString(pepperedPass);
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
-        salt = str[2];
+        email = str[2];
+        salt = str[3];
 
         if (checkRegistration(username) && !(pepperedPassAsString.equals(""))) {
             Connection conn = null;
-            String sql = "";
             try {
                 Class.forName("org.sqlite.JDBC");
                 conn = DriverManager.getConnection("jdbc:sqlite:database.db");
-                Statement stmn = conn.createStatement();
-                sql = "INSERT INTO Users (userName, password, salt)" +
-                        "Values('" + username + "', '" + pepperedPassAsString + "', '" + salt + "');";
-                stmn.execute(sql);
-                stmn.close();
+                PreparedStatement stmn = conn.prepareStatement("INSERT INTO Users (userName, password, emailAdd, salt)" +
+                        "Values(?,?,?,?);");
+                stmn.setString(1, username);
+                stmn.setString(2, pepperedPassAsString);
+                stmn.setString(3, email);
+                stmn.setString(4, salt);
+                stmn.execute();
             } catch (Exception e) {
                 return false;
             } finally {
@@ -220,16 +232,14 @@ public class EchoServer extends Thread {
         return true;
     }
 
-    private static void trackAddress(String ip, String mac) {
-        String ipAdd = ip;
-        String macAdd = mac;
+    private void trackAddress(String ip, String mac) {
         Connection c = null;
         try {
             Class.forName("org.sqlite.JDBC");
             c = DriverManager.getConnection("jdbc:sqlite:database.db");
             Statement stmn = c.createStatement();
             try {
-                String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ipAdd + "', '" + macAdd + "');";
+                String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ip + "', '" + mac + "');";
                 stmn.execute(sql);
             } catch (SQLiteException o) {
                 return;
@@ -243,8 +253,13 @@ public class EchoServer extends Thread {
                     c.close();
                 }
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
         }
+    }
+
+    private void requestLogout() {
+        loggedInUsers.remove(socketLoggedUser);
+        socketLoggedUser = "";
     }
 }
