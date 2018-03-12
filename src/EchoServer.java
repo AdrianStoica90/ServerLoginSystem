@@ -1,5 +1,3 @@
-import org.sqlite.SQLiteException;
-
 import java.net.*;
 import java.io.*;
 import java.sql.*;
@@ -103,9 +101,11 @@ public class EchoServer extends Thread {
                 try {
                     Class.forName("org.sqlite.JDBC");
                     c = DriverManager.getConnection("jdbc:sqlite:database.db");
-                    Statement s = c.createStatement();
-                    String sql = "SELECT * FROM Users";
-                    ResultSet rs = s.executeQuery(sql);
+                    PreparedStatement s = c.prepareStatement("SELECT Username FROM Users\n" +
+                                    "WHERE (username = ?) AND (password = ?);");
+                    s.setString(1, username);
+                    s.setString(2, pepperedPass);
+                    ResultSet rs = s.executeQuery();
                     while (rs.next()) {
                         if (rs.getString("username").equalsIgnoreCase(username) && rs.getString("password").equals(pepperedPass)) {
                             returnStatement = true;
@@ -136,7 +136,7 @@ public class EchoServer extends Thread {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:database.db");
             Statement stmn = conn.createStatement();
-            String sql = "SELECT * FROM Users";
+            String sql = "SELECT userame FROM Users";
             ResultSet rs = stmn.executeQuery(sql);
             while (rs.next()) {
                 if (rs.getString("userName").equalsIgnoreCase(userName)) {
@@ -241,8 +241,8 @@ public class EchoServer extends Thread {
             try {
                 String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ip + "', '" + mac + "');";
                 stmn.execute(sql);
-            } catch (SQLiteException o) {
-                return;
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
             stmn.close();
         } catch (Exception e) {
