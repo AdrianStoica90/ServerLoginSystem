@@ -20,7 +20,6 @@ public class EchoServer extends Thread {
     }
 
     public void run(){
-        int portNumber = 80;
 
         boolean b = true;
         while (b) {
@@ -58,8 +57,6 @@ public class EchoServer extends Thread {
                     }
                 }
             } catch (IOException e) {
-                System.out.println("Exception caught when trying to listen on port "
-                        + portNumber + " or listening for a connection");
                 System.out.println(e.getMessage());
                 b = false;
                 try{
