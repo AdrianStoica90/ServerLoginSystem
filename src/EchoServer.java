@@ -187,12 +187,12 @@ public class EchoServer extends Thread {
     }
 
     private boolean requestUserAccount(String inputLine) {
-        String input, username, password, salt, pepperedPassAsString, email;
+        String input, email, password, salt, pepperedPassAsString, cabinNo, fullName;
         pepperedPassAsString = "";
         byte[] pepperedPass;
         input = inputLine.substring(inputLine.indexOf('(') + 1, inputLine.indexOf(')'));
         String[] str = input.split(",");
-        username = str[0];
+        email = str[0];
         password = str[1];
         try {
             pepperedPass = Password.getSaltedHash(password.toCharArray());
@@ -200,20 +200,23 @@ public class EchoServer extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        email = str[2];
-        salt = str[3];
+        cabinNo = str[2];
+        fullName = str[3];
+        salt = str[4];
 
-        if (checkRegistration(username) && !(pepperedPassAsString.equals(""))) {
+
+        if (checkRegistration(email) && !(pepperedPassAsString.equals(""))) {
             Connection conn = null;
             try {
                 Class.forName("org.sqlite.JDBC");
                 conn = DriverManager.getConnection("jdbc:sqlite:database.db");
-                PreparedStatement stmn = conn.prepareStatement("INSERT INTO Users (userName, password, emailAdd, salt)" +
-                        "Values(?,?,?,?);");
-                stmn.setString(1, username);
-                stmn.setString(2, pepperedPassAsString);
-                stmn.setString(3, email);
-                stmn.setString(4, salt);
+                PreparedStatement stmn = conn.prepareStatement("INSERT INTO Users (Name, Email, CabinNo, Password, Salt)" +
+                        "Values(?,?,?,?,?);");
+                stmn.setString(1, fullName);
+                stmn.setString(2, email);
+                stmn.setString(3, cabinNo);
+                stmn.setString(4, pepperedPassAsString);
+                stmn.setString(5, salt);
                 stmn.execute();
             } catch (Exception e) {
                 return false;
