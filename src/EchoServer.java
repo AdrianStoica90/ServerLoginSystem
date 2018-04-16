@@ -97,7 +97,7 @@ public class EchoServer extends Thread {
                 try {
                     Class.forName("org.sqlite.JDBC");
                     c = DriverManager.getConnection("jdbc:sqlite:database.db");
-                    PreparedStatement s = c.prepareStatement("SELECT Email FROM Customer\n" +
+                    PreparedStatement s = c.prepareStatement("SELECT Email,password FROM Customer\n" +
                                     "WHERE (Email = ?) AND (password = ?);");
                     s.setString(1, email);
                     s.setString(2, pepperedPass);
@@ -164,7 +164,7 @@ public class EchoServer extends Thread {
             String sql = "SELECT * FROM Customer";
             ResultSet rs = s.executeQuery(sql);
             while (rs.next()) {
-                String current = rs.getString("userName");
+                String current = rs.getString("email");
                 if (current.equals(username)) salt = rs.getString("salt");
             }
             s.close();
@@ -197,8 +197,8 @@ public class EchoServer extends Thread {
             e.printStackTrace();
         }
         cabinNo = str[2];
-        fullName = str[3];
-        salt = str[4];
+        fullName = str[4];
+        salt = str[3];
 
 
         if (checkRegistration(email) && !(pepperedPassAsString.equals(""))) {
