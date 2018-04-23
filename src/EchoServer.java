@@ -24,12 +24,7 @@ public class EchoServer extends Thread {
         boolean b = true;
         while (b) {
             try {
-                String ip = clientSocket.getInetAddress().getHostAddress();
-                System.out.println("Receiving connection from: "+ip);
                 String inputLine;
-                String mac = in.readLine();
-                System.out.println("Connected MAC Address: "+mac);
-                trackAddress(ip, mac);
 
                 while (b) {
                     out.flush();
@@ -61,6 +56,7 @@ public class EchoServer extends Thread {
             } catch (IOException e) {
                 System.out.println(e.getMessage());
                 b = false;
+                requestLogout();
                 try{
                     in.close();
                     out.close();
@@ -77,14 +73,14 @@ public class EchoServer extends Thread {
     private boolean requestLogin(String inputLine) {
         boolean returnStatement = false;
 
-        String username, password, input, pepperedPass;
+        String email, password, input, pepperedPass;
         pepperedPass = "";
         input = inputLine.substring(inputLine.indexOf('(') + 1, inputLine.indexOf(')'));
         String[] args = input.split(",");
-        username = args[0];
+        email = args[0];
         boolean isAlreadyLoggedIn = false;
         for (String s : loggedInUsers) {
-            if (username.equalsIgnoreCase(s)) {
+            if (email.equalsIgnoreCase(s)) {
                 isAlreadyLoggedIn = true;
             }
         }
@@ -101,16 +97,16 @@ public class EchoServer extends Thread {
                 try {
                     Class.forName("org.sqlite.JDBC");
                     c = DriverManager.getConnection("jdbc:sqlite:database.db");
-                    PreparedStatement s = c.prepareStatement("SELECT Username FROM Users\n" +
-                                    "WHERE (username = ?) AND (password = ?);");
-                    s.setString(1, username);
+                    PreparedStatement s = c.prepareStatement("SELECT Email,password FROM Customer\n" +
+                                    "WHERE (Email = ?) AND (password = ?);");
+                    s.setString(1, email);
                     s.setString(2, pepperedPass);
                     ResultSet rs = s.executeQuery();
                     while (rs.next()) {
-                        if (rs.getString("username").equalsIgnoreCase(username) && rs.getString("password").equals(pepperedPass)) {
+                        if (rs.getString("Email").equalsIgnoreCase(email) && rs.getString("password").equals(pepperedPass)) {
                             returnStatement = true;
-                            socketLoggedUser = username;
-                            loggedInUsers.add(username);
+                            socketLoggedUser = email;
+                            loggedInUsers.add(email);
                             break;
                         }
                     }
@@ -136,10 +132,10 @@ public class EchoServer extends Thread {
             Class.forName("org.sqlite.JDBC");
             conn = DriverManager.getConnection("jdbc:sqlite:database.db");
             Statement stmn = conn.createStatement();
-            String sql = "SELECT userame FROM Users";
+            String sql = "SELECT Email FROM Customer";
             ResultSet rs = stmn.executeQuery(sql);
             while (rs.next()) {
-                if (rs.getString("userName").equalsIgnoreCase(userName)) {
+                if (rs.getString("Email").equalsIgnoreCase(userName)) {
                     return false;
                 }
             }
@@ -165,10 +161,10 @@ public class EchoServer extends Thread {
             Class.forName("org.sqlite.JDBC");
             c = DriverManager.getConnection("jdbc:sqlite:database.db");
             Statement s = c.createStatement();
-            String sql = "SELECT * FROM Users";
+            String sql = "SELECT * FROM Customer";
             ResultSet rs = s.executeQuery(sql);
             while (rs.next()) {
-                String current = rs.getString("userName");
+                String current = rs.getString("email");
                 if (current.equals(username)) salt = rs.getString("salt");
             }
             s.close();
@@ -187,12 +183,12 @@ public class EchoServer extends Thread {
     }
 
     private boolean requestUserAccount(String inputLine) {
-        String input, username, password, salt, pepperedPassAsString, email;
+        String input, email, password, salt, pepperedPassAsString, cabinNo, fullName;
         pepperedPassAsString = "";
         byte[] pepperedPass;
         input = inputLine.substring(inputLine.indexOf('(') + 1, inputLine.indexOf(')'));
         String[] str = input.split(",");
-        username = str[0];
+        email = str[0];
         password = str[1];
         try {
             pepperedPass = Password.getSaltedHash(password.toCharArray());
@@ -200,20 +196,23 @@ public class EchoServer extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        email = str[2];
+        cabinNo = str[2];
+        fullName = str[4];
         salt = str[3];
 
-        if (checkRegistration(username) && !(pepperedPassAsString.equals(""))) {
+
+        if (checkRegistration(email) && !(pepperedPassAsString.equals(""))) {
             Connection conn = null;
             try {
                 Class.forName("org.sqlite.JDBC");
                 conn = DriverManager.getConnection("jdbc:sqlite:database.db");
-                PreparedStatement stmn = conn.prepareStatement("INSERT INTO Users (userName, password, emailAdd, salt)" +
-                        "Values(?,?,?,?);");
-                stmn.setString(1, username);
-                stmn.setString(2, pepperedPassAsString);
-                stmn.setString(3, email);
-                stmn.setString(4, salt);
+                PreparedStatement stmn = conn.prepareStatement("INSERT INTO Customer (Name, Email, CabinNo, Password, Salt)" +
+                        "Values(?,?,?,?,?);");
+                stmn.setString(1, fullName);
+                stmn.setString(2, email);
+                stmn.setString(3, cabinNo);
+                stmn.setString(4, pepperedPassAsString);
+                stmn.setString(5, salt);
                 stmn.execute();
             } catch (Exception e) {
                 return false;
@@ -230,32 +229,6 @@ public class EchoServer extends Thread {
             return false;
         }
         return true;
-    }
-
-    private void trackAddress(String ip, String mac) {
-        Connection c = null;
-        try {
-            Class.forName("org.sqlite.JDBC");
-            c = DriverManager.getConnection("jdbc:sqlite:database.db");
-            Statement stmn = c.createStatement();
-            try {
-                String sql = "INSERT INTO Whitelist (ipaddress, macaddress) VALUES('" + ip + "', '" + mac + "');";
-                stmn.execute(sql);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            stmn.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (c != null) {
-                    c.close();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     private void requestLogout() {
