@@ -39,15 +39,18 @@ public class EchoServer extends Thread {
                             if (accountCreationSuccessful) {
                                 out.println("Account created successfully.");
                             } else {
-                                System.out.println("Failsed");
-                                out.println("Failed");
+                                System.out.println("Failed: Account creation unsuccessful!");
+                                out.println("Failed: Account creation unsuccessful!");
                             }
                         } else if (inputLine.contains("requestSaltFromUsername")) {
                             out.println(requestSaltFromUserName(inputLine.substring(inputLine.indexOf("(") + 1, inputLine.indexOf(")"))));
                         } else if (inputLine.contains("requestLogin")) {
                             if (requestLogin(inputLine)) {
                                 out.println("Success");
-                            } else out.println("Failed");
+                            } else {
+                                System.out.println("Failed: User unable to log in!");
+                                out.println("Failed: User unable to log in!");
+                            }
                         } else if (inputLine.contains("requestLogout")) {
                             requestLogout();
                         }
