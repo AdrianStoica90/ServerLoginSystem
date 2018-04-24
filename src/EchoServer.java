@@ -53,6 +53,7 @@ public class EchoServer extends Thread {
                             }
                         } else if (inputLine.contains("requestLogout")) {
                             requestLogout();
+                            out.println("successfully");
                         }
                     }
                 }
@@ -200,8 +201,8 @@ public class EchoServer extends Thread {
             e.printStackTrace();
         }
         cabinNo = str[2];
-        fullName = str[4];
-        salt = str[3];
+        fullName = str[3];
+        salt = str[4];
 
 
         if (checkRegistration(email) && !(pepperedPassAsString.equals(""))) {
